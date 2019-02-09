@@ -2,7 +2,7 @@
 
 const vtt = require('srt-to-vtt')
 const { spawn, spawnSync } = require('child_process')
-const { mkdirSync, createReadStream, createWriteStream, writeFileSync } = require('fs')
+const { mkdirSync, createReadStream, createWriteStream, writeFileSync, existsSync } = require('fs')
 const minimist = require('minimist')
 const path = require('path')
 const pump = require('pump')
@@ -25,6 +25,16 @@ if (!argv.out) {
 if (!argv.input || argv.help) {
   console.log('Usage: web-transcode -i <media-file> ( -s subtitles )')
   process.exit(1)
+}
+
+if (!existsSync(argv.input)) {
+  console.log('Input file does not exist')
+  process.exit(2)
+}
+
+if (argv.s && !existsSync(argv.s)) {
+  console.log('Subtitle file does not exist')
+  process.exit(2)
 }
 
 const name = (argv.name || path.basename(argv.input, path.extname(argv.input)))
