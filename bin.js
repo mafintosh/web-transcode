@@ -15,7 +15,8 @@ const argv = minimist(process.argv.slice(2), {
     sub: 's',
     out: 'o',
     name: 'n'
-  }
+  },
+  '--': true
 })
 
 if (!argv.out) {
@@ -67,14 +68,16 @@ if (argv.s) {
   })
 }
 
+const extra = argv['--'] || []
+extra.push(mediaOut)
+
 spawn('ffmpeg', [
   '-i', argv.input,
   '-y',
   '-hide_banner',
   '-vcodec', v,
-  '-acodec', a,
-  mediaOut
-], { stdio: 'inherit' })
+  '-acodec', a
+].concat(extra), { stdio: 'inherit' })
 
 writeFileSync(htmlOut, `
 <html>
