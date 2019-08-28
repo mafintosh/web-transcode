@@ -79,8 +79,8 @@ spawn('ffmpeg', [
   '-acodec', a
 ].concat(extra), { stdio: 'inherit' })
 
-writeFileSync(htmlOut, `
-<html>
+if (argv.html !== false) {
+  writeFileSync(htmlOut, `<html>
   <head>
     <style>
       html, body {
@@ -105,3 +105,4 @@ writeFileSync(htmlOut, `
   </body>
 </html>
 `)
+}
