@@ -6,6 +6,7 @@ const { mkdirSync, createReadStream, createWriteStream, writeFileSync, existsSyn
 const minimist = require('minimist')
 const path = require('path')
 const pump = require('pump')
+const os = require('os')
 
 const argv = minimist(process.argv.slice(2), {
   alias: {
@@ -31,6 +32,12 @@ if (!argv.input || argv.help) {
 if (!existsSync(argv.input)) {
   console.log('Input file does not exist')
   process.exit(2)
+}
+
+if (argv.s === true || argv.s === 'auto') {
+  const tmp = path.join(os.tmpdir(), 'web-transcode.' + Date.now() + '.srt')
+  spawnSync('ffmpeg', [ '-i', argv.input, '-map', '0:s:0', tmp ], { stdio: 'inherit' })
+  argv.s = tmp
 }
 
 if (argv.s && !existsSync(argv.s)) {
