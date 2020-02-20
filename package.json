@@ -1,6 +1,6 @@
 {
   "name": "web-transcode",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Transcodes a video file plus captions so it can be played in a browser",
   "main": "bin.js",
   "bin": {
