@@ -20,12 +20,14 @@ const argv = minimist(process.argv.slice(2), {
   '--': true
 })
 
+const onlyMp4 = !!argv['only-mp4']
+
 if (!argv.out) {
   argv.out = 'web'
 }
 
 if (!argv.input || argv.help) {
-  console.log('Usage: web-transcode -i <media-file> ( -s subtitles )')
+  console.log('Usage: web-transcode -i <media-file> ( -s subtitles -n name -o ./web --only-mp4? )')
   process.exit(1)
 }
 
@@ -35,7 +37,7 @@ if (!existsSync(argv.input)) {
 }
 
 if (argv.s === true || argv.s === 'auto') {
-  const tmp = path.join(os.tmpdir(), 'web-transcode.' + Date.now() + '.srt')
+  const tmp = tmpFile('srt')
   spawnSync('ffmpeg', [ '-i', argv.input, '-map', '0:s:0', tmp ], { stdio: 'inherit' })
   argv.s = tmp
 }
@@ -52,8 +54,8 @@ try {
 } catch (_) {}
 
 const mediaOut = path.join(argv.out, name + '.mp4')
-const subsOut = path.join(argv.out, name + '.vtt')
-const htmlOut = path.join(argv.out, name + '.html')
+const subsOut = onlyMp4 ? tmpFile('.vtt') : path.join(argv.out, name + '.vtt')
+const htmlOut = onlyMp4 ? tmpFile('.html') : path.join(argv.out, name + '.html')
 
 const { stderr } = spawnSync('ffmpeg', [ '-i', argv.input, '-hide_banner' ])
 
@@ -72,44 +74,65 @@ if (argv.s) {
     : pump(createReadStream(argv.s), vtt())
   pump(stream, createWriteStream(subsOut), function (err) {
     if (err) throw err
+    ready()
   })
+} else {
+  ready()
 }
 
-const extra = argv['--'] || []
-extra.push(mediaOut)
+function ready () {
+  const extraArgs = [].concat(argv['--'] || [])
+  const subArgs = []
 
-spawn('ffmpeg', [
-  '-i', argv.input,
-  '-y',
-  '-hide_banner',
-  '-vcodec', v,
-  '-acodec', a
-].concat(extra), { stdio: 'inherit' })
+  if (argv.s) {
+    subArgs.push(
+      '-i',
+      subsOut,
+      '-c:s',
+      'mov_text'
+    )
+  }
 
-if (argv.html !== false) {
-  writeFileSync(htmlOut, `<html>
-  <head>
-    <style>
-      html, body {
-        margin: 0;
-        padding: 0;
-        background-color: black;
-      }
+  spawn('ffmpeg', [
+    '-i', argv.input,
+    ...subArgs,
+    '-y',
+    '-hide_banner',
+    '-vcodec', v,
+    '-acodec', a,
+    ...extraArgs,
+    mediaOut
+  ], { stdio: 'inherit' })
 
-      video {
-        width: 100%;
-        height: 100%;
-        max-height: 100%;
-        max-width: 100%;
-      }
-    </style>
-  </head>
-  <body>
-    <video controls autoplay>
-      <source type="video/mp4" src="${name}.mp4">   
-      ${argv.s ? `<track src="${name}.vtt" label="Subtitles" kind="captions" default>` : ''}
-    </video>
-  </body>
-</html>
-`)
+  if (argv.html !== false) {
+    writeFileSync(htmlOut, `<html>
+    <head>
+      <style>
+        html, body {
+          margin: 0;
+          padding: 0;
+          background-color: black;
+        }
+
+        video {
+          width: 100%;
+          height: 100%;
+          max-height: 100%;
+          max-width: 100%;
+        }
+      </style>
+    </head>
+    <body>
+      <video controls autoplay>
+        <source type="video/mp4" src="${name}.mp4">
+        ${argv.s ? `<track src="${name}.vtt" label="Subtitles" kind="captions" default>` : ''}
+      </video>
+    </body>
+  </html>
+  `)
+  }
+}
+
+function tmpFile (ext) {
+  return path.join(os.tmpdir(), 'web-transcode.' + Math.random().toString(16).slice(2) + '.' + ext)
 }
